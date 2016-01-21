@@ -1,6 +1,6 @@
 # midwest-inequality
 
-Analysis of Census Bureau Business Dynamics Statistics series.
+Analysis of Census Bureau [Business Dynamics Statistics](http://www.census.gov/ces/dataproducts/bds/data_estab.html) series.
 
 ## Setup
 

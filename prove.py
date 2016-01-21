@@ -17,21 +17,43 @@ def load_bds(data):
 
     fips_lookup = agate.Table.from_csv('fips_lookup.csv', column_types=tester)
 
-    data['bds'] = bds.join(fips_lookup, 'state', 'fips')
+    bds = bds.join(fips_lookup, 'state', 'fips')
+
+    tester = agate.TypeTester(force={
+        'State Code': agate.Text(),
+        'Yearly July 1st Estimates': agate.Text()
+    })
+
+    pop_estimates = agate.Table.from_csv('cdc_bridged_population_estimates.csv', column_types=tester)
+
+    data['bds'] = bds.join(pop_estimates, lambda r: (r['state'], r['year2']), lambda r: (r['State Code'], r['Yearly July 1st Estimates']))
 
 def group_by_state_and_year(data):
     data['grouped'] = (data['bds']
-        .group_by('state_name')
+        .group_by('bea_region')
+        .group_by('size')
         .group_by('year2'))
 
-def nebraska(data):
-    ne = data['grouped']['Nebraska']['2005']
+def aggregate(data):
+    data['aggregated'] = (data['grouped']
+        .aggregate([
+            ('total_firms', agate.Sum('Firms')),
+            ('total_establishments', agate.Sum('Estabs')),
+            ('total_employees', agate.Sum('Emp')),
+            ('total_population', agate.Sum('Population'))
+        ])
+    )
 
-    print(ne)
+def results(data):
+    data['aggregated'].to_csv('output.csv')
 
-if __name__ == '__main__':
+def main():
     loaded = proof.Analysis(load_bds)
     grouped = loaded.then(group_by_state_and_year)
-    grouped.then(nebraska)
+    aggregated = grouped.then(aggregate)
+    aggregated.then(results)
 
     loaded.run()
+
+if __name__ == '__main__':
+    main()
