@@ -17,32 +17,30 @@ def load_bds(data):
 
     fips_lookup = agate.Table.from_csv('fips_lookup.csv', column_types=tester)
 
-    bds = bds.join(fips_lookup, 'state', 'fips')
-
-    tester = agate.TypeTester(force={
-        'State Code': agate.Text(),
-        'Yearly July 1st Estimates': agate.Text()
-    })
-
-    pop_estimates = agate.Table.from_csv('cdc_bridged_population_estimates.csv', column_types=tester)
-
-    data['bds'] = bds.join(pop_estimates, lambda r: (r['state'], r['year2']), lambda r: (r['State Code'], r['Yearly July 1st Estimates']))
+    data['bds'] = bds.join(fips_lookup, 'state', 'fips')
 
 def group_by_state_and_year(data):
     data['grouped'] = (data['bds']
-        .group_by('bea_region')
+        .group_by('census_region')
         .group_by('size')
         .group_by('year2'))
 
 def aggregate(data):
-    data['aggregated'] = (data['grouped']
+    aggregated = (data['grouped']
         .aggregate([
             ('total_firms', agate.Sum('Firms')),
             ('total_establishments', agate.Sum('Estabs')),
-            ('total_employees', agate.Sum('Emp')),
-            ('total_population', agate.Sum('Population'))
+            ('total_employees', agate.Sum('Emp'))
         ])
     )
+
+    tester = agate.TypeTester(force={
+        'year': agate.Text()
+    })
+
+    pop_estimates = agate.Table.from_csv('region_pop_lookup.csv', delimiter='\t', column_types=tester)
+
+    data['aggregated'] = aggregated.join(pop_estimates, lambda r: (r['census_region'], r['year2']), lambda r: (r['region'], r['year']))
 
 def results(data):
     data['aggregated'].to_csv('output.csv')

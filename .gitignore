@@ -10,3 +10,6 @@ dist
 build
 .proof
 .ipynb_checkpoints
+paywatch/*
+paywatch.csv
+output.csv
